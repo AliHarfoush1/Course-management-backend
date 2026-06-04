@@ -25,7 +25,8 @@ const seedAdmin = async () => {
                 email: adminEmail,
                 password: hashedPassword,
                 role: "ADMIN",
-                avatar: "/uploads/profile.jpg"
+                avatar: "/uploads/profile.jpg",
+                isEmailVerified: true
             });
 
             console.log("Admin account created successfully");
@@ -35,7 +36,7 @@ const seedAdmin = async () => {
             admin.password = hashedPassword;
             admin.role = "ADMIN";
             admin.avatar = admin.avatar || "/uploads/profile.jpg";
-
+            admin.isEmailVerified = true;
             await admin.save();
 
             console.log("Admin account updated successfully");

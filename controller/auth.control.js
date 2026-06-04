@@ -5,6 +5,7 @@ const asyncwrapper = require('../middlewares/middlewares.js');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const AppError = require('../utils/apperror.js');
+const sendEmail = require('../utils/sendemail.js');
 const {
     generateAccessToken,
     generateRefreshToken
@@ -14,22 +15,27 @@ const {
 
 const postuser = asyncwrapper(async (req, res, next) => {
     const { firstName, lastName, email, password } = req.body;
+
+    // 1) validation
     if (!firstName || !lastName || !email || !password) {
         return next(new AppError("All fields are required", 400));
     }
+
     if (password.length < 8) {
         return next(new AppError("Password must be at least 8 characters long", 400));
     }
+
+    // 2) check old user
     const oldUser = await User.findOne({ email });
 
     if (oldUser) {
-        const error = new Error("Email already exists");
-        error.statusCode = 400;
-        return next(error);
+        return next(new AppError("Email already exists", 400));
     }
 
+    // 3) hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // 4) create user object
     const newUser = new User({
         firstName,
         lastName,
@@ -39,36 +45,50 @@ const postuser = asyncwrapper(async (req, res, next) => {
         avatar: req.file ? `/uploads/${req.file.filename}` : "/uploads/profile.jpg"
     });
 
-    const payload = {
-    id: newUser._id.toString(),
-    email: newUser.email,
-    role: newUser.role
-};
+    // 5) create verification token
+    const verificationToken = newUser.createEmailVerificationToken();
 
-const accessToken = generateAccessToken(payload);
-const refreshToken = generateRefreshToken(payload);
-
-    newUser.refreshToken = refreshToken;
-
+    // 6) save user with token fields
     await newUser.save();
 
-    res.status(201).json({
-        status: status.SUCCESS,
-        data: {
-            user: {
-                id: newUser._id,
-                firstName: newUser.firstName,
-                lastName: newUser.lastName,
-                email: newUser.email,
-                role: newUser.role,
-                avatar: newUser.avatar
-            },
-            accessToken,
-            refreshToken
-        }
-    });
-});
+    // 7) create verification URL
+    const verificationURL = `http://localhost:5173/verify-email/${verificationToken}`;
 
+    // 8) send email
+    try {
+        await sendEmail({
+            email: newUser.email,
+            subject: "Verify your email",
+            message: `Welcome ${newUser.firstName},
+
+Please verify your email by opening this link:
+
+${verificationURL}
+
+This link is valid for 15 minutes.`
+        });
+
+        res.status(201).json({
+            status: "success",
+            message: "User registered successfully. Please check your email to verify your account.",
+            data: {
+                user: {
+                    id: newUser._id,
+                    firstName: newUser.firstName,
+                    lastName: newUser.lastName,
+                    email: newUser.email,
+                    role: newUser.role,
+                    avatar: newUser.avatar,
+                    isEmailVerified: newUser.isEmailVerified
+                }
+            }
+        });
+    } catch (err) {
+        await User.findByIdAndDelete(newUser._id);
+
+        return next(new AppError("There was an error sending verification email. Please try again.", 500));
+    }
+});
 const loginuser = asyncwrapper(async (req, res, next) => {
     const { email, password } = req.body;
 
@@ -81,7 +101,9 @@ const loginuser = asyncwrapper(async (req, res, next) => {
     if (!user) {
         return next(new AppError("Invalid email or password", 401));
     }
-
+    if (!user.isEmailVerified) {
+    return next(new AppError("Please verify your email before logging in", 403));
+}
     const isPasswordValid = await bcrypt.compare(password, user.password);
    
     if (!isPasswordValid) {
@@ -225,9 +247,60 @@ if (!allowedRoles.includes(role)) {
         }
     });
 });
+const resendVerificationEmail = asyncwrapper(async (req, res, next) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return next(new AppError("Email is required", 400));
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+        return next(new AppError("No user found with this email", 404));
+    }
+
+    if (user.isEmailVerified) {
+        return next(new AppError("Email is already verified", 400));
+    }
+
+    const verificationToken = user.createEmailVerificationToken();
+
+    await user.save({ validateBeforeSave: false });
+
+    const verificationURL = `http://localhost:5173/verify-email/${verificationToken}`;
+
+    try {
+        await sendEmail({
+            email: user.email,
+            subject: "Verify your email",
+            message: `Hello ${user.firstName},
+
+Please verify your email by opening this link:
+
+${verificationURL}
+
+This link is valid for 15 minutes.`
+        });
+
+        res.status(200).json({
+            status: "success",
+            message: "Verification email sent successfully"
+        });
+    } catch (err) {
+        user.emailVerificationToken = undefined;
+        user.emailVerificationTokenExpires = undefined;
+        await user.save({ validateBeforeSave: false });
+
+        return next(new AppError("There was an error sending verification email", 500));
+    }
+});
+
+
 module.exports = {
     postuser,
     loginuser,
+    resendVerificationEmail,
     refreshAccessToken,
     logoutUser,
     updateUserRole

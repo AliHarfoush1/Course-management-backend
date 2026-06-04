@@ -7,6 +7,7 @@ const errorMiddleware = require('./middlewares/error_middleware.js');
 const courseRouter = require('./routes/course.route.js');
 const authRouter = require('./routes/auth.route.js');
 const userRouter=require('./routes/user.route.js');
+const contentRouter = require('./routes/content.route.js');
 const reviewRouter = require('./routes/review.route.js');
 const path = require('path');
 const app = express();
@@ -35,7 +36,7 @@ mongoose.connect(process.env.MONGO_URI)
     });
 // Apply rate limiting to all requests
 const limiter = rateLimit({
-    max: 100,
+    max: 1000,
     windowMs: 15 * 60 * 1000,
     message: {
         status: "error",
@@ -54,6 +55,7 @@ app.use('/api/courses', courseRouter);
 app.use('/api', authRouter);
 app.use('/api', userRouter);
 app.use('/api', reviewRouter);
+app.use('/api/courses', contentRouter);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Serve static files from the uploads directory
 
 // Error middleware لازم يكون آخر حاجة

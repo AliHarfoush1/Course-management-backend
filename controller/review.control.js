@@ -1,5 +1,5 @@
 const Review = require("../models/review.model");
-const Course = require("../models/course.models");
+const Course = require("../models/course.model");
 const AppError = require("../utils/apperror");
 const asyncwrapper = require("../middlewares/middlewares.js");
 const jwt = require('jsonwebtoken');

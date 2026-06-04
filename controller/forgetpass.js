@@ -19,14 +19,12 @@ const forgetPassword = asyncwrapper(async (req, res, next) => {
     }
 
     const resetToken = user.createPasswordResetToken();
-    ///////////////////////////
-
-/////////////////////////////////
+    
     await user.save({ validateBeforeSave: false });
 
-    const resetURL = `${req.protocol}://${req.get("host")}/api/reset-password/${resetToken}`;
+    const resetURL = `http://localhost:5173/reset-password/${resetToken}`;
 
-    const message = `Forgot your password? Send a PATCH request with your new password to: ${resetURL}
+    const message = `Forgot your password? Reset it by opening this link: ${resetURL}
 If you did not forget your password, ignore this email.`;
 
     try {

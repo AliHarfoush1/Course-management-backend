@@ -23,13 +23,14 @@ description: {
     ref: 'User',
     required: true
   },
-  students: [{
-    type: mongoose.Schema.Types.ObjectId,
+  studentsEnrolled: [{
+    type:mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]},{
-    timestamps: true
-  
-  
-});
+  }]
+},
+{
+  timestamps: true
+}
+);
 const Course = mongoose.model('Course', courseSchema);
 module.exports = Course;

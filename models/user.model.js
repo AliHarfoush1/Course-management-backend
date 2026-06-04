@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
-
+const course= require('./course.model.js');
 const userSchema = new mongoose.Schema({
   firstName: {
     type: String, required: true
@@ -23,6 +23,10 @@ const userSchema = new mongoose.Schema({
     select: false,
     minlength: [8, 'Password must be at least 8 characters long']
 },
+enrolledCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
+}],
 tokens: 
     {
          type: String,
@@ -46,7 +50,14 @@ createdAt: {
     type: Date,
     default: Date.now   },
 passwordResetToken: String,
-passwordResetExpires: Date
+
+
+passwordResetExpires: Date,
+emailVerificationToken: String,
+isEmailVerified: {
+    type: Boolean,
+    default: false},
+emailVerificationTokenExpires: Date,
 
 });
 const crypto = require("crypto");
@@ -62,6 +73,19 @@ userSchema.methods.createPasswordResetToken = function () {
     this.passwordResetExpires = Date.now() + 10 * 60 * 1000;
 
     return resetToken;
+};
+
+
+userSchema.methods.createEmailVerificationToken = function () {
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
+    this.emailVerificationToken = crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+
+this.emailVerificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000);
+    return verificationToken;
 };
 const User = mongoose.model('User', userSchema);
 module.exports = User;

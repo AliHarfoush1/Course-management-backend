@@ -7,7 +7,7 @@ const allowedto = require('../middlewares/allowedto.js');
 const upload = multer({ dest: 'uploads/' });
 const resetPassword = require("../controller/resetpass.js").resetPassword;
 const forgetPassword= require("../controller/forgetpass.js").forgetPassword;
-
+const verifyEmail = require("../controller/verifyemail.js").verifyEmail;
 const roles = require('../utils/userRoles.js');
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -48,4 +48,7 @@ router.patch(
 
 router.post("/forget-password", forgetPassword);
 router.patch("/reset-password/:token", resetPassword);
+
+router.post ('/resend-verification-email', controller.resendVerificationEmail);
+router.get('/verify-email/:token', verifyEmail);
 module.exports = router;

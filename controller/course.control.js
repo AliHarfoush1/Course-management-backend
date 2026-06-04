@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Course = require('../models/course.models.js');
+const Course = require('../models/course.model.js');
 const status = require('../utils/status.js');
 const asyncwrapper = require('../middlewares/middlewares.js');
 const AppError = require('../utils/apperror.js');
