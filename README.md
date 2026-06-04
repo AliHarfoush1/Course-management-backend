@@ -1,46 +1,185 @@
-# Node.js Backend Project
+# Course Management Backend API
 
-A Node.js + Express backend API for user authentication, courses, reviews, file uploads, and role-based access control.
+A Node.js + Express + MongoDB backend for an e-learning/course management platform.
 
-## Features
-
-- User register and login
-- JWT authentication using access token and refresh token
-- Cookies support for tokens
-- Role-based authorization:
-  - STUDENT
-  - INSTRUCTOR
-  - ADMIN
-- Admin-only and instructor-only protected routes
-- Course CRUD operations
-- Course cover image upload
-- Reviews system
-- Forgot password and reset password using email
-- Security middleware:
-  - Helmet
-  - Rate limit
-  - CORS
-  - HPP
-  - Mongo sanitize
-- Logging with Morgan and Winston
-- Default admin account using seed script
+The system supports authentication, role-based access control, course management, enrollment, course content modules/lessons, reviews, password reset, email verification, file uploads, logging, and security middleware.
 
 ---
 
-## Requirements
+## Features
 
-Before running the project, make sure you have installed:
+### Authentication & Authorization
+
+- User registration
+- User login
+- JWT access token and refresh token
+- Authentication using cookies and Authorization Bearer token
+- Role-based access control
+- Supported roles:
+  - `STUDENT`
+  - `INSTRUCTOR`
+  - `ADMIN`
+- Admin seed script for creating one admin account
+- Logout
+- Refresh access token
+- Forgot password
+- Reset password
+- Email verification
+- Resend verification email
+
+### Users
+
+- Get users
+- Get logged-in user profile
+- Update profile
+- Upload profile avatar
+- Admin can update user roles
+
+### Courses
+
+- Get all courses
+- Search, filter, and sort courses
+- Get single course by ID
+- Create course
+- Update course
+- Delete course
+- Upload course cover image
+- Course instructor relation
+- Track enrolled students in a course
+
+### Enrollment
+
+- Student can enroll in a course
+- Student can unenroll from a course
+- Student can view their enrolled courses
+- Admin/Instructor can view course students
+
+### Course Content
+
+The content structure is:
+
+```txt
+Course
+  └── Modules
+        └── Lessons
+```
+
+Supported content features:
+
+- Add module to course
+- Get course modules
+- Get full course content
+- Update module
+- Delete module
+- Add lesson inside module
+- Get module lessons
+- Get lesson details
+- Update lesson
+- Delete lesson
+
+### Reviews
+
+- Student can add review to course
+- Student can get course reviews
+- Student can update their review
+- Student can delete their review
+- One review per student per course
+
+### Security
+
+- Helmet security headers
+- CORS configuration
+- Rate limiting
+- MongoDB query sanitization
+- HTTP Parameter Pollution protection
+- Password hashing using bcrypt
+- JWT authentication
+- Protected routes
+- Role authorization middleware
+
+### Logging
+
+- Morgan request logging in development
+- Winston error logging to `logs/error.log`
+
+---
+
+## Tech Stack
 
 - Node.js
-- npm
-- MongoDB connection string
-- Gmail account with App Password if you want to use forget/reset password email
+- Express.js
+- MongoDB
+- Mongoose
+- JWT
+- bcryptjs
+- Multer
+- Nodemailer
+- Cookie Parser
+- CORS
+- Helmet
+- HPP
+- express-rate-limit
+- express-mongo-sanitize
+- Morgan
+- Winston
+- Validator
+
+---
+
+## Project Structure
+
+```txt
+src/
+  controller/
+    auth.control.js
+    course.control.js
+    enroll.control.js
+    forgetpass.js
+    lesson.control.js
+    module.control.js
+    resetpass.js
+    review.control.js
+    user.control.js
+    verifyemail.js
+
+  middlewares/
+    allowedto.js
+    checktoken.js
+    error_middleware.js
+    middlewares.js
+
+  models/
+    course.model.js
+    enrollment.js
+    lesson.model.js
+    module.model.js
+    review.model.js
+    user.model.js
+
+  routes/
+    auth.route.js
+    content.route.js
+    course.route.js
+    review.route.js
+    user.route.js
+
+  utils/
+    apperror.js
+    generateJWT.js
+    logger.js
+    seedAdmin.js
+    sendemail.js
+    status.js
+    userRoles.js
+
+  index.js
+```
 
 ---
 
 ## Installation
 
-Install project dependencies:
+Install dependencies:
 
 ```bash
 npm install
@@ -50,9 +189,7 @@ npm install
 
 ## Environment Variables
 
-Create a `.env` file in the root folder of the project.
-
-You can copy the values from `.env.example` and replace them with your own values.
+Create a `.env` file in the same folder as `index.js`.
 
 Example:
 
@@ -77,55 +214,38 @@ ADMIN_EMAIL=admin@example.com
 ADMIN_PASSWORD=Admin@123456
 ```
 
-Important:
+### Important
 
-Do not upload your real `.env` file to GitHub.
+Do not upload the real `.env` file to GitHub.
 
-Make sure `.gitignore` contains:
+Add this to `.gitignore`:
 
 ```gitignore
 node_modules
 .env
 logs
-uploads
+uploads/*
 ```
 
----
+If you want to keep default images, use:
 
-## Create Default Admin Account
-
-Register route only creates STUDENT accounts.
-
-To create one admin account, run the admin seed script:
-
-```bash
-node utils/seedAdmin.js
+```gitignore
+uploads/*
+!uploads/profile.jpg
+!uploads/default-avatar.png
 ```
-
-This script should create or update the admin account based on the admin data in `.env`.
-
-After running the script, you can login using:
-
-```json
-{
-  "email": "admin@example.com",
-  "password": "Admin@123456"
-}
-```
-
-Use your actual admin email and password from `.env`.
 
 ---
 
 ## Run the Project
 
-For development:
+Development mode:
 
 ```bash
-npm run dev
+npm run run:dev
 ```
 
-Or:
+Or run directly:
 
 ```bash
 node index.js
@@ -137,160 +257,87 @@ The server will run on:
 http://localhost:3000
 ```
 
-Unless you changed the `PORT` value in `.env`.
+---
+
+## Create Admin Account
+
+The register endpoint creates `STUDENT` accounts only.
+
+To create or update one admin account, add admin credentials to `.env`, then run:
+
+```bash
+node utils/seedAdmin.js
+```
+
+This will:
+
+- Create admin if not found
+- Update admin if already exists
+- Mark admin email as verified
+- Ensure only one active admin account exists
 
 ---
 
-## Authentication
+## API Routes
 
-After login, the API creates:
-
-- Access token
-- Refresh token
-
-Tokens can be sent using cookies or Authorization header.
-
-Example Authorization header:
+Base URL:
 
 ```txt
-Authorization: Bearer YOUR_ACCESS_TOKEN
+http://localhost:3000
 ```
 
 ---
 
-## Main API Routes
+## Auth Routes
 
-### Auth Routes
+### Register
 
 ```http
 POST /api/register
+```
+
+Body type: `form-data`
+
+Fields:
+
+```txt
+firstName
+lastName
+email
+password
+avatar optional file
+```
+
+### Login
+
+```http
 POST /api/login
-POST /api/logout
+```
+
+Body:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+```
+
+### Refresh Token
+
+```http
 POST /api/refresh-token
-POST /api/forget-password
-PATCH /api/reset-password/:token
 ```
 
----
-
-### User Routes
+### Logout
 
 ```http
-GET /api/users
-PATCH /api/update-profile
+POST /api/logout
 ```
 
-Some routes require authentication and admin permission.
+Requires authentication.
 
----
-
-### Course Routes
-
-```http
-GET /api/courses
-GET /api/courses/:id
-POST /api/courses
-PUT /api/courses/:id
-DELETE /api/courses/:id
-POST /api/courses/:id/upload-cover
-```
-
-Course create, update, delete, and upload cover routes require ADMIN or INSTRUCTOR role.
-
----
-
-### Review Routes
-
-```http
-POST /api/courses/:courseId/reviews
-GET /api/courses/:courseId/reviews
-PATCH /api/reviews/:reviewId
-DELETE /api/reviews/:reviewId
-```
-
-Adding a review requires a logged-in STUDENT account.
-
----
-
-## Course Search, Filter, and Sort
-
-You can search, filter, and sort courses using query parameters.
-
-### Get all courses
-
-```http
-GET /api/courses
-```
-
-### Search by name or description
-
-```http
-GET /api/courses?search=javascript
-```
-
-### Filter by price
-
-```http
-GET /api/courses?minPrice=1000
-```
-
-```http
-GET /api/courses?maxPrice=5000
-```
-
-```http
-GET /api/courses?minPrice=1000&maxPrice=5000
-```
-
-### Sort courses
-
-Sort by price ascending:
-
-```http
-GET /api/courses?sort=price
-```
-
-Sort by price descending:
-
-```http
-GET /api/courses?sort=-price
-```
-
-Sort by name:
-
-```http
-GET /api/courses?sort=name
-```
-
-### Search + Filter + Sort
-
-```http
-GET /api/courses?search=js&minPrice=1000&maxPrice=5000&sort=price
-```
-
----
-
-## File Upload
-
-For image upload, use Postman:
-
-```txt
-Body -> form-data
-```
-
-The file field name must match the backend multer field name.
-
-For example:
-
-```txt
-avatar: File
-```
-
----
-
-## Forgot Password
-
-To request a reset password link:
+### Forgot Password
 
 ```http
 POST /api/forget-password
@@ -304,7 +351,7 @@ Body:
 }
 ```
 
-To reset the password:
+### Reset Password
 
 ```http
 PATCH /api/reset-password/:token
@@ -319,74 +366,478 @@ Body:
 }
 ```
 
-For Gmail email sending, use a Gmail App Password, not your normal Gmail password.
+### Verify Email
+
+```http
+GET /api/verify-email/:token
+```
+
+### Resend Verification Email
+
+```http
+POST /api/resend-verification-email
+```
+
+Body:
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+### Update User Role
+
+```http
+PATCH /api/users/:id/role
+```
+
+Requires `ADMIN`.
+
+Body:
+
+```json
+{
+  "role": "INSTRUCTOR"
+}
+```
 
 ---
 
-## Logging
+## User Routes
 
-The project can use:
+### Get Users
 
-- Morgan for request logging in development
-- Winston for saving errors in log files
+```http
+GET /api/users
+```
 
-Logs should not be uploaded to GitHub.
+Requires `ADMIN` or `INSTRUCTOR`.
 
-Add this to `.gitignore`:
+### Get Profile
 
-```gitignore
-logs
+```http
+GET /api/users/profile
+```
+
+Requires authentication.
+
+### Update Profile
+
+```http
+PATCH /api/users/profile/update
+```
+
+Requires authentication.
+
+Body type: `form-data`
+
+Fields:
+
+```txt
+firstName optional
+lastName optional
+avatar optional file
+```
+
+---
+
+## Course Routes
+
+### Get Courses
+
+```http
+GET /api/courses
+```
+
+### Search Courses
+
+```http
+GET /api/courses?search=node
+```
+
+### Filter Courses by Price
+
+```http
+GET /api/courses?minPrice=1000&maxPrice=5000
+```
+
+### Sort Courses
+
+```http
+GET /api/courses?sort=price
+GET /api/courses?sort=-price
+GET /api/courses?sort=name
+```
+
+### Get Course by ID
+
+```http
+GET /api/courses/:id
+```
+
+### Create Course
+
+```http
+POST /api/courses
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+Body:
+
+```json
+{
+  "name": "Node.js Course",
+  "description": "Backend development course",
+  "price": 9000
+}
+```
+
+### Update Course
+
+```http
+PUT /api/courses/:id
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+### Delete Course
+
+```http
+DELETE /api/courses/:id
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+### Upload Course Cover
+
+```http
+POST /api/courses/:id/upload-cover
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+Body type: `form-data`
+
+Field:
+
+```txt
+avatar file
+```
+
+---
+
+## Enrollment Routes
+
+### Enroll in Course
+
+```http
+POST /api/courses/:id/enroll
+```
+
+Requires `STUDENT`.
+
+### Unenroll from Course
+
+```http
+DELETE /api/courses/:id/unenroll
+```
+
+Requires `STUDENT`.
+
+### Get My Courses
+
+```http
+GET /api/courses/my-courses
+```
+
+Requires `STUDENT` or `ADMIN`.
+
+### Get Course Students
+
+```http
+GET /api/courses/:id/students
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+---
+
+## Course Content Routes
+
+Content routes are mounted under:
+
+```txt
+/api/courses
+```
+
+### Add Module to Course
+
+```http
+POST /api/courses/:courseId/modules
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+Body:
+
+```json
+{
+  "title": "Module 1: Introduction",
+  "order": 1
+}
+```
+
+### Get Course Modules
+
+```http
+GET /api/courses/:courseId/modules
+```
+
+### Get Full Course Content
+
+```http
+GET /api/courses/:courseId/content
+```
+
+### Update Module
+
+```http
+PATCH /api/courses/modules/:moduleId
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+### Delete Module
+
+```http
+DELETE /api/courses/modules/:moduleId
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+### Add Lesson to Module
+
+```http
+POST /api/courses/:moduleId/lessons
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+Body:
+
+```json
+{
+  "title": "Lesson 1: What is Node.js?",
+  "description": "Introduction lesson",
+  "content": "Node.js is a JavaScript runtime.",
+  "video_url": "https://example.com/video.mp4",
+  "order": 1,
+  "is_previewed": true
+}
+```
+
+### Get Module Lessons
+
+```http
+GET /api/courses/:moduleId/lessons
+```
+
+Requires `ADMIN`, `INSTRUCTOR`, or `STUDENT`.
+
+### Get Lesson by ID
+
+```http
+GET /api/courses/lessons/:lessonId
+```
+
+Requires `ADMIN`, `INSTRUCTOR`, or `STUDENT`.
+
+### Update Lesson
+
+```http
+PATCH /api/courses/lessons/:lessonId
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+### Delete Lesson
+
+```http
+DELETE /api/courses/lessons/:lessonId
+```
+
+Requires `ADMIN` or `INSTRUCTOR`.
+
+---
+
+## Review Routes
+
+### Add Review
+
+```http
+POST /api/courses/:courseId/reviews
+```
+
+Requires `STUDENT`.
+
+Body:
+
+```json
+{
+  "rating": 5,
+  "comment": "Great course"
+}
+```
+
+### Get Reviews
+
+```http
+GET /api/courses/:courseId/reviews
+```
+
+Requires `STUDENT`.
+
+### Update Review
+
+```http
+PATCH /api/courses/:courseId/reviews
+```
+
+Requires `STUDENT`.
+
+Body:
+
+```json
+{
+  "rating": 4,
+  "comment": "Updated review"
+}
+```
+
+### Delete Review
+
+```http
+DELETE /api/courses/:courseId/reviews
+```
+
+Requires `STUDENT`.
+
+---
+
+## Authentication
+
+Protected endpoints accept token from:
+
+### Cookie
+
+```txt
+accessToken
+```
+
+### Authorization Header
+
+```txt
+Authorization: Bearer YOUR_ACCESS_TOKEN
+```
+
+---
+
+## File Uploads
+
+Uploaded images are saved in:
+
+```txt
+uploads/
+```
+
+Static files are served from:
+
+```txt
+/uploads
+```
+
+Example:
+
+```txt
+http://localhost:3000/uploads/image-name.jpg
+```
+
+---
+
+## Email Setup
+
+This project uses Nodemailer with Gmail.
+
+Use Gmail App Password, not your normal Gmail password.
+
+Required `.env` values:
+
+```env
+EMAIL_USER=your_email@gmail.com
+EMAIL_PASS=your_gmail_app_password
 ```
 
 ---
 
 ## Security Notes
 
-Before submitting or deploying the project:
+Before pushing to GitHub or submitting the project:
 
-1. Do not upload `.env` to GitHub.
-2. Change all JWT secrets.
-3. Change MongoDB password if it was exposed.
-4. Use Gmail App Password for email sending.
-5. Keep register route creating STUDENT only.
-6. Create ADMIN only using the seed script.
-7. Protect admin routes using authentication and role authorization.
+1. Delete `.env` from the repository.
+2. Delete `node_modules`.
+3. Delete `.git` if you are sending the project as a zip file.
+4. Change exposed secrets.
+5. Use strong JWT secrets.
+6. Use Gmail App Password.
+7. Keep register route creating `STUDENT` only.
+8. Create admin using `seedAdmin.js`.
 
 ---
 
-## Project Startup Steps for a New Developer
+## Common Problems
 
-1. Clone or download the project.
-2. Run:
+### Too Many Requests
 
-```bash
-npm install
+The project uses rate limiting. During development, increase the limit or disable it temporarily in `index.js`.
+
+### Cannot GET /api/verify-email/:token
+
+Make sure this route exists:
+
+```http
+GET /api/verify-email/:token
 ```
 
-3. Create `.env` file using `.env.example`.
-4. Add MongoDB URI and JWT secrets.
-5. Add admin credentials in `.env`.
-6. Run:
+### Invalid or Expired Verification Token
 
-```bash
-node utils/seedAdmin.js
-```
+Check that the verification expiry field is saved correctly in the user document.
 
-7. Start the server:
+### Gmail Invalid Login
 
-```bash
-npm run dev
-```
+Use a Gmail App Password instead of your Gmail account password.
 
-8. Login using the admin account.
-9. Test protected routes using Postman.
+### Invalid Course ID
+
+Make sure custom routes like `/my-courses` are defined before `/:id` routes.
 
 ---
 
 ## Notes
 
-- Register creates STUDENT accounts only.
-- ADMIN account should be created using `seedAdmin.js`.
-- Do not allow users to send role in register body.
-- Use `verifyToken` before protected routes.
-- Use `allowedto(...)` for role-based permissions.
+- The backend is designed for local frontend origin:
+
+```txt
+http://localhost:5173
+```
+
+- Update the CORS origin when deploying.
+- The current development command is:
+
+```bash
+npm run run:dev
+```
+
+- Register creates unverified student accounts.
+- Users must verify their email before login if email verification is enforced.
